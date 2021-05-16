@@ -1,3 +1,0 @@
-"0","RNGkind(sample.kind = ""Rounding"")"
-"0","set.seed(417)"
-"0","fviz_nbclust(data_scale, kmeans, method = ""wss"")"

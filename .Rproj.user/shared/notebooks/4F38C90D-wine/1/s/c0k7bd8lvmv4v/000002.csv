@@ -1,5 +1,0 @@
-"0",""
-"0","# model building"
-"0","naive <- naiveBayes(wine_dsamp %>% select(-quality), wine_dsamp$quality, laplace = 1)"
-"0","# model fitting"
-"0","naive_pred <- predict(naive, test, type = ""class"") # for the class prediction"

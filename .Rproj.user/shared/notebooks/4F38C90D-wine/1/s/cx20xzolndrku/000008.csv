@@ -1,7 +1,0 @@
-"0","model_dt_recap_prun <- c(""wine.test"", ""wine_train_down"")"
-"0","Accuracy_prun <- c(0.8119,0.8046)"
-"0","Recall_prun <- c(0.9535,0.9673)"
-"0",""
-"0","tabelmodelrecap2 <- data.frame(model_dt_recap_prun,Accuracy_prun,Recall_prun)"
-"0",""
-"0","print(tabelmodelrecap2)"

@@ -1,8 +1,0 @@
-"0","library(dplyr) # Wrangling Data"
-"0","library(caret) # Confussion Matrix"
-"0","library(FactoMineR) #"
-"0","library(e1071)# Naive Bayes"
-"0","library(ROCR) # ROC"
-"0","library(randomForest) # Random Forest"
-"0","library(partykit) # Decision Tree"
-"0","library(rsample)"

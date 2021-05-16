@@ -1,1 +1,0 @@
-"0","data_scale <- data_clean %>% scale() %>% as.data.frame()"

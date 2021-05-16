@@ -1,6 +1,0 @@
-"0",""
-"0","set.seed(211)"
-"0","wine_dsamp <- downSample(x= red_wine %>% select(-quality),"
-"0","                        y=red_wine$quality,"
-"0","                        yname = ""quality"")"
-"0",""

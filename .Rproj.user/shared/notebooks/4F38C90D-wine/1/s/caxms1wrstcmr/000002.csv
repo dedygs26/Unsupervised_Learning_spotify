@@ -1,0 +1,4 @@
+"0","model_dt_tun <- ctree(quality ~ ., wine_dsamp,"
+"0","                               control = ctree_control(mincriterion = 0.5,"
+"0","                                            minsplit = 35, #40"
+"0","                                            minbucket = 20)) #12"

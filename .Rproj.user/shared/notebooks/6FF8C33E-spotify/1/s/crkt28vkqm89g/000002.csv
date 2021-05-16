@@ -1,0 +1,1 @@
+"0","data_pca <- PCA(data_scale,scale.unit = F, graph = F)"

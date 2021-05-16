@@ -1,0 +1,1666 @@
+---
+title: 'Classification in Machine Learning 2: In-class'
+author: "Joe Cristian"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output:
+  html_document:
+    theme: cosmo
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+# clear-up the environment
+rm(list = ls())
+
+# chunk options
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  comment = "#>"
+)
+
+options(scipen = 999)
+
+# libraries
+library(dplyr)
+
+```
+
+<style>
+body {
+text-align: justify}
+</style>
+
+# Mindmap
+
+```{r, out.width = "100%", echo = FALSE, fig.align = "center"}
+knitr::include_graphics("img/C2.png")
+```
+
+# Naive Bayes
+
+Naive Bayes adalah algoritma klasifikasi yang didasari oleh **Bayes' Theorem of Probability**. Faktanya, teorema Bayes sering digunakan pada kehidupan sehari-hari. Maka dari itu, mari kita pelajari basic dari probabilitas terlebih dahulu.
+
+## Theory of Probability
+
+Saat kita menghitung peluang 2 atau lebih kejadian terjadi bersamaan, kita dapat menghitungnya dengan 2 cara:
+
+* **Independent Event**: Peluang kejadian A tidak mempengaruhi peluang kejadian B. Contoh:
+  + Peluang dadu keluar angka 4 pada lemparan pertama **dan** peluang keluar angka 6 pada lemparan kedua
+
+Peluang 2 kejadian independen terjadi secara bersamaan adalah hasil perkalian peluang masing-masing kejadian tersebut.
+
+```{r echo=FALSE, out.width="50%"}
+knitr::include_graphics("img/venn.png")
+```
+
+$$P(A \cap B) = P(A) \times P(B)$$
+
+**Contoh:**
+
+Peluang dadu keluar angka 4 pada lemparan pertama = P(A) = 1/6
+Peluang dadu keluar angka 6 pada lemparan kedua  = P(B) = 1/6
+
+$$P(A \cap B) = P(A) \times P(B) = \frac{1}{6} \times \frac{1}{6} = \frac{1}{36}$$
+
+* **Dependent Event**: Peluang kejadian A dipengaruhi oleh peluang kejadian B. Contoh:
+  - Peluang banjir di Jakarta **jika diketahui** peluang hujan deras di Bogor
+  - Peluang kelas Algoritma sepi jika diketahui peluang terjangkit COVID19 di daerah Jakarta
+  - Peluang pelanggan memberi rating rendah jika diketahui terdapat kata "Buruk" pada form feedback
+
+Untuk peluangnya, kita menggunakan **Bayes Theorem**:
+
+```{r echo=FALSE, out.width="50%"}
+knitr::include_graphics("img/venn.gif")
+```
+
+$$P(A | B) = \frac{P(A \cap B)}{P(B)}$$
+
+**Study Case: SPAM Classifier**
+
+**Business Question:** Kita sebagai seorang analis di salah satu provider jaringan di Indonesia. Fokus perusahaan saat ini tertuju pada banyaknya keluhan pelanggan terkait SMS spam. Perusahaan khawatir apabila hal ini tidak ditangani, maka akan berpotensi menyebabkan terjadinya Churn atau perpindahan pelanggan ke provider kompetitor karena pelanggan terganggu dengan spam.
+
+Maka dari itu, kita kumpulkan **1000 SMS** dan diperoleh **250 SMS** diantaranya adalah spam. Setelah melakukan text mining terhadap keseluruhan SMS, terdapat **100 SMS** spam dengan kata **Pinjaman** di dalamnya, sedangkan **30 sms** lainnya dengan kata **Pinjaman** bukan merupakan spam.
+
+Maka, **Diketahui:**
+
+$$\begin {matrix}
+ & Spam & \neg Spam \\
+\hline
+Pinjaman & 100 & 30 \\
+\neg Pinjaman & 150 & 720
+\end{matrix}$$
+
+Doyo adalah seorang pelanggan dari provider tersebut. Bila Doyo hari ini menerima sms dengan kata *Pinjaman* di dalamnya, apakah sms tersebut diperkirakan sebagai SPAM? 
+
+**Dicari:** 
+
+$P(Spam\ |\ Pinjam)$ = Peluang sms termasuk **SPAM** jika diketahui terdapat kata **Pinjaman** di dalamnya 
+
+Jika kita menggunakan rumus kejadian independen untuk menghitung peluang kejadian dependen, hasilnya akan terlalu optimistik:
+
+$$ P(Spam \cap Pinjaman) = P(Spam) \times P(Pinjaman) = \frac{250}{1000}\ \times \frac{130}{1000}\ = 0.0325 \ !? \ amat \ kecil $$
+
+Mari kita hitung menggunakan rumus kejadian dependen:
+
+$$P(Spam | Pinjaman) = \frac{P(Spam \cap Pinjaman)}{P(Pinjaman)} = \frac{100/1000}{130/1000} = 0.7692$$
+
+Peluang sms yang diterima Doyo adalah SPAM sebesar 0.7692. Dengan treshold 0.5, kita bisa anggap bahwa sms tersebut adalah SPAM. Hal ini lebih mendekati aplikasi di dunia nyata.
+
+## [Opt] Intuisi Rumus
+
+Bila diturunkan, terdapat rumus Bayes Theorem (yang juga sering digunakan), sebagai berikut:
+
+$$P(A|B) = \frac{P(A \cap B)}{P(B)} = \frac{P(A)\ P(B|A)}{P(A)\ P(B|A) +\  P(\neg A)\ P(B|\neg A)}$$
+
+$P(A|B)$ = Peluang terjadi A jika diketahui B **telah terjadi**.
+
+$P(B|A)$ = Peluang terjadi B jika diketahui A **telah terjadi**.
+
+$P(A)$ = Peluang terjadi A
+
+$P(B)$ = Peluang terjadi B
+
+$P(B|\neg A)$ = Peluang terjadi B jika diketahui A tidak terjadi.
+
+$P(\neg A)$ = Peluang tidak terjadi A
+
+Rumus tersebut tidak perlu dihafal, namun akan baik bila kita memahami intuisinya. Mari coba analogikan dengan kasus SPAM Classifier!
+
+$$ P(Spam\ |\ Pinjam) = \frac{P(Spam)\ P(Pinjam\ |\ Spam)}{P(Spam)\ P(Pinjam\ |\ Spam) + P(\neg Spam)\ P(Pinjam\ |\neg Spam)} $$
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("img/bayes.PNG")
+```
+
+Kita cari satu per satu peluang yang dibutuhkan:
+
+* Peluang sms adalah SPAM: $P(Spam) = 250/1000 = 0.25$
+* Peluang muncul kata Pinjaman di sms SPAM: $P(Pinjam\ |\ Spam) = \frac{100}{250} =  0.4$
+* Peluang sms bukan SPAM: $P(\neg Spam) = 750/1000 = 0.75$ 
+* Peluang muncul kata Pinjaman di sms yang bukan SPAM: $P(Pinjam\ |\neg Spam) = \frac{30}{750} =  0.04$
+
+Kita masukkan angka peluang yang sudah kita hitung:
+
+$$P(Spam\ |\ Pinjam) = \frac{0.25 \times 0.4}{0.25 \times 0.4\ +\ 0.75 \times 0.04} = 0.7692$$
+Beberapa istilah yang juga sering ditemui:
+
+* $P(Spam\ |\ Pinjam)$: Posterior Probability (peluang kejadian dependent yang kita cari; `peluang sms merupakan Spam jika diketahui ada kata Pinjaman di dalamnya`)
+* $P(Spam)$: Prior Probability (peluang sms `Spam` sebelum ada dependensi kata `Pinjaman`)
+* $P(Pinjam\ |\ Spam)$: Likelihood (peluang `Pinjaman` muncul di sms `Spam`)
+* $P(Pinjam)$: Marginal Likelihood (peluang `Pinjaman` muncul di keseluruhan sms). Umumnya dipecah menjadi:
+  + $P(Spam)\ P(Pinjam|Spam)$: peluang `Pinjaman` muncul di sms `Spam`
+  + $P(\neg Spam)\ P(Pinjam|\neg Spam)$: peluang `Pinjaman` muncul di sms bukan `Spam`
+  
+Jadi bisa disimpulkan juga bahwa peluang kejadian dependent (posterior probability) adalah sebagai berikut:
+
+$Posterior Probability = \frac{Prior \ probability \ * \ Likelihood }{Marginal \ likelihood}$
+
+**NOTE:**
+
+```{r echo=FALSE, out.width="60%"}
+knitr::include_graphics("img/bayes2.PNG")
+```
+
+## Characteristic of Naive Bayes
+
+Naive Bayes memanfaatkan Bayes Theorem for conditional probability (kejadian dependent events), namun menerapkan asumsi *Naive* pada hubungan antar prediktornya:
+
+1. Hubungan prediktor dengan target variabel saling dependen 
+2. Hubungan antar prediktor saling independen: 
+
+Saat prediktor berupa kata "Pinjaman", "Rupiah", "Utang", kemunculan masing-masing kata dianggap kejadian independen. Sehingga dapat dituliskan:
+  
+$$P(P\ \cap\ R\ \cap\ U\ |\ Spam) = P(P\ |\ Spam)\ P(R\ |\ Spam)\ P(U\ |\ Spam)\ $$  
+  
+Sehingga rumus ini:
+
+$$P(Spam|P \cap R \cap \ U) = \frac{P(Spam) \ P(P \cap R \cap \ U|Spam)}{P(Spam) \ P(P \cap R \cap \ U|\ Spam)\ + \ P(\neg Spam) \ P(P \cap R \cap \ U|\ \neg Spam)}$$
+
+Menjadi seperti ini:
+
+$$= \frac{P(Spam) \ P(P\ |\ Spam)\ P(R\ |\ Spam)\ P(U\ |\ Spam)}{P(Spam) \ P(P\ |\ Spam)\ P(R\ |\ Spam)\ P(U\ |\ Spam)\ +\ P(\neg Spam) \ P(P\ |\neg Spam)\ P(R\ |\neg Spam)\ P(U\ |\neg Spam)}$$
+
+3. tiap prediktor memiliki bobot yang sama untuk menghasilkan prediksi:  
+
+Saat prediktor berupa kata “Pinjaman” dan “Pergi”, maka keduanya dianggap sama penting untuk menghasilkan prediksi.
+
+Naive Bayes memiliki kelebihan dan kekurangan:
+
+* Kelebihan: 
+  + waktu training cepat
+  + sering digunakan untuk *base classifier* (acuan) untuk dibandingkan dengan model yang lebih kompleks   
+  + cocok untuk kasus yang prediktornya banyak 
+  
+* Kekurangan: 
+  + skewness due to data scarcity => kecenderungan prediksi ketika ada kelangkaan data
+  + laplace smoothing dapat digunakan untuk meminimalisir efek dari skewness due to data scarcity
+
+## Laplace Smoothing
+
+Pada beberapa kasus, dapat terjadi **data scarcity**. Misalnya,
+
+$$\begin {matrix}
+ & Spam & \neg Spam \\
+\hline
+Promo & 0 & 1 \\
+\neg Promo & 199 & 800
+\end{matrix}$$
+
+$$P(Spam | Promo) = \frac{P(Spam \cap Promo)}{P(Promo)} = \frac{0/1000}{1/1000} = 0$$
+
+Ketika terdapat *suatu prediktor yang frekuensi nilainya 0 untuk salah satu kelas* (pada kasus ini 0 kata `Promo` untuk kelas `Spam`), maka *model secara otomatis memprediksi peluang 0 untuk kondisi tersebut, tanpa memperdulikan nilai dari prediktor yang lainnya*. Alhasil, Pada kasus ini, model akan selalu memprediksi peluang = 0 (Bukan Spam) bila terdapat kata Promo, dan memprediksi peluang = 1 (Spam) bila tidak terdapat kata promo. Model menjadi bias atau kurang akurat dalam melakukan prediksi.
+
+Apa yang harus kita lakukan jika menemukan fenomena tersebut?
+
+* **Strategi 1: Menghilangkan prediktor yang bermasalah**
+
+Prediktor yang bermasalah bisa dihilangkan atau tidak digunakan untuk pembuatan model. Namun, cara ini mungkin kurang tepat karena bisa saja feature tersebut memang punya pengaruh besar terhadap hasil prediksi, sehingga ketika dihilangkan maka hasil prediksi justru kurang baik. Selain itu, dengan bertambahnya data, ada kemungkinan frekuensinya berubah dari yang sebelumnya tidak ada menjadi bertambah.
+
+* **Strategi 2: Menggunakan Laplace Smoothing**
+
+Karena kita hanya ingin memastikan tidak ada observasi yang nol, namun proporsi tiap kondisi tidak berubah (hal ini karena memodifikasi proporsi adalah hal yang salah, perhitungan jadi tidak sesuai data), solusi alternatifnya adalah Laplace Smoothing! Laplace smoothing adalah *menambahkan frekuensi dari setiap prediktor sebanyak angka tertentu (biasanya 1)*, sehingga tidak ada prediktor yang memiliki nilai 0 dan harus dibuang.
+
+$$\begin {matrix}
+ & Spam & \neg Spam \\
+\hline
+Promo & 0 + 1 & 1 + 1 \\
+\neg Promo & 199 + 1 & 800 + 1
+\end{matrix}$$
+
+$$P(Spam | Promo) = \frac{P(Spam \cap Promo)}{P(Promo)} = \frac{1/1004}{3/1004} = 0.333$$
+
+Kita dapat peluangnya yang amat kecil, namun tidak tepat 0. Dengan metode Laplace Smoothing kita bisa memastikan model tidak terlalu ekstrim dalam menentukan nilai target (mutlak 0 atau 1) serta tetap dapat mempertimbangkan efek dari prediktor lainnya. 
+
+
+## Study Case: Party Affiliation
+
+Kita akan coba menganalisis data dari **United States Congressional Voting tahun 1984**. Data berisi informasi tentang hasil voting atau dukungan dari masing-masing anggota kongres dangan affiliasi partai yang berbeda (republican/democrat) terhadap berbagai isu atau kebijakan negara.
+
+**Business Question:** Ingin dilakukan klasifikasi apakah seseorang cenderung berafiliasi dengan partai republican/democrat.
+
+* Positive Class: either 
+* Negative Class: either
+
+### Read Data
+
+Read data `votes.txt` dengan `header = F` agar observasi pertama tidak dianggap sebagai header atau nama kolom.
+
+```{r}
+# read data
+votes <- read.csv("data_input/votes.txt", header = F, stringsAsFactors = T)
+names(votes) <- c("party", 
+                  "hcapped_infants",
+                  "watercost_sharing", 
+                  "adoption_budget_reso",
+                  "physfee_freeze",
+                  "elsalvador_aid",
+                  "religious_grps",
+                  "antisatellite_ban",
+                  "nicaraguan_contras",
+                  "mxmissile",
+                  "immigration",
+                  "synfuels_cutback",
+                  "education_funding",
+                  "superfundright_sue",
+                  "crime",
+                  "dutyfree_exps",
+                  "expadmin_southafr"
+                  )
+
+# cek data
+head(votes)
+```
+Keterangan:
+
+* y = yea (setuju)
+* n = nay (tidak setuju)
+* ? = tidak vote
+
+### Wrangling 
+
+**cek adakah NA?**
+
+```{r}
+colSums(is.na(votes))
+anyNA(votes)
+```
+
+**adakah tipe data yang belum tepat?**
+
+```{r}
+glimpse(votes)
+```
+
+### EDA
+
+**Cek proporsi kelas target: seimbang/tidak**
+
+```{r}
+prop.table(table(votes$party, votes$hcapped_infants))
+```
+
+```{r}
+prop.table(table(votes$party))
+```
+
+
+```{r}
+iris %>% 
+  mutate(zodiak = sample(c("leo","taurus","aqua"),size = nrow(iris),replace = T))
+```
+
+```{r}
+set.seed(123)
+iris %>% 
+  mutate(zodiak = sample(c("leo","taurus","aqua"),size = nrow(iris),replace = T))
+
+```
+
+
+
+### Cross-Validation
+
+Split datanya menjadi data training dan data testing, dengan 75% data akan digunakan sebagai data training. Gunakan stratified random sampling (`initial_split()`)
+```{r}
+RNGkind(sample.kind = "Rounding")
+library(rsample)
+set.seed(123)
+
+splitter <- initial_split(votes, prop = 0.75, strata = "party")
+data_train <- training(splitter)
+data_test <- testing(splitter)
+```
+
+Cek proporsi kelas target untuk data_train:
+
+```{r}
+prop.table(table(data_train$party))
+```
+
+```{r}
+prop.table(table(data_test$party))
+```
+
+=# pr instructor: membandingkan sampel data train yang di balancing
+
+### Build Model
+
+Pada R kita dapat menggunakan function `naiveBayes()` dari package `e1071` untuk membuat model Naive Bayes.
+
+```{r}
+library(e1071)
+
+votes_naive <- naiveBayes(x = data_train %>% select(-party), 
+                          y = data_train$party,
+                          laplace = 1)  
+```
+
+
+### Model Interpretation
+```{r}
+prop.table(table(data_train$party, data_train$hcapped_infants),margin = 1)
+```
+
+```{r}
+votes_naive
+```
+
+prior probability -> probabilitas target pertama ketika belum ada "syarat" (atau pengaruh) variabel tertentu
+
+likelihood -> probabilitas ketika diketahui salah satu kelas target variabel
+
+
+Kita bisa menginterpretasikan masing-masing prediktor dari hasil perhitungan peluang dependennya dengan variabel target. Contoh:
+
+* proporsi anggota kongres yang berafiliasi dengan partai "democrat" saat ia menyetujui kebijakan `hcapped_infants` adalah 0.58823529 
+
+$$P(democrat|y_hcapedInfants) = 0.588$$
+
+* proporsi anggota kongres yang berafiliasi dengan partai "republican" saat ia menyetujui kebijakan `watercost_sharing` adalah 0.41860465
+
+### Model Evaluation
+
+Prediksi **kelas** dari data test dengan function `predict()`, masukan ke dalam objek `votes_predClass`:
+
+```{r}
+# predict
+votes_predClass <- predict(votes_naive, newdata = data_test,type = "class")
+```
+
+```{r}
+head(votes_predClass)
+```
+
+
+Pilihan types:
+
+* raw -> peluang
+* class -> label hasil prediksi
+
+Evaluasi model dengan confusion matrix:
+
+```{r}
+library(caret)
+# membanding kelas hasil prediksi dengan data aktual 
+confusionMatrix(votes_predClass, data_test$party,positive = "democrat")
+```
+
+Dari akurasi, recal (Sensitivity), precision (Pos Pred Value), specificity, Metrics mana yang ingin diunggulkan? 
+
+-> Akurasi (agar netral)
+
+
+**Summary DAy 1 **
+1. Karakteristik Naive Bayes:
+  * antara prediktor & target saling dependent (Bayes Theorem)
+  * asumsi naive:
+    + antar prediktor independent
+    + antar prediktor memiliki bobot yang sama untuk melakukan prediksi
+  * Kelebihan: 
+    + waktu training cepat (karena asumsi "naive" nya)
+    + sering dijadikan *base classifier* (acuan) untuk dibandingkan dengan model yang lebih kompleks
+    + baik untuk kasus text classification/text analysis yang bisa memiliki prediktor kata yang amat banyak.
+  * Kekurangan: 
+    + skewness due to data scarcity: jika ada salah satu prediktor yang nilainya 0 di salah satu kelas target, maka model akan langsung memprediksi peluang = 0 (mutlak) sehingga model menjadi bias.
+    + dapat diatasi dengan **laplace smoothing**: menambahkan observasi di semua kondisi dengan angka yang sama, misal 1 -> mencegah adanya nilai 0 di salah satu kelas target, tanpa mengubah proporsi asli
+  * cara membuat naive bayes: `naiveBayes()` dari package `e1071`
+
+
+--- end of day 1 ---
+
+⚠️️ **Hati-hati:** Menggunakan Accuracy pada data yang imbalance bisa menghasilkan performance yang misleading. Hal ini dapat diatasi oleh ROC & AUC.
+
+# ROC and AUC
+
+```{r echo=FALSE, out.width="80%"}
+knitr::include_graphics("img/accuracy_limitation.PNG")
+```
+
+Akurasi memiliki kekurangan untuk memperlihatkan kebaikan model mengklasifikasi kedua kelas. Mengatasi kekurangan accuracy tersebut, hadir **ROC** dan **AUC** sebagai tools evaluasi lain setelah Confusion Matrix. 
+
+## Receiver-Operating Curve (ROC)
+
+**Receiver-Operating Curve (ROC)** adalah kurva yang memplotkan hubungan antara True Positive Rate (Sensitivity atau Recall) dengan False Positive Rate (1-Specificity). Model yang baik idealnya memiliki **TP tinggi** dan **FP rendah**.
+
+**Intuisi: Mengapa seperti itu?**
+
+```{r echo=FALSE, out.width="80%"}
+knitr::include_graphics("img/roc-intuition.png")
+```
+
+Buat objek yang berisi hasil prediksi dalam bentuk probability (`type = "raw"`)
+```{r}
+votes_predProb <- predict(votes_naive, newdata = data_test,type = "raw")
+head(votes_predProb)
+```
+
+Kita dapat buat ROC dengan menyiapkan objek prediction
+
+```{r message=FALSE}
+library(ROCR)
+
+# buat objek prediction
+votes_roc <- prediction(predictions = votes_predProb[, 1], # prob kelas positif
+                        labels = as.numeric(data_test$party == "democrat")) # label kelas positif
+
+# buat performance dari objek prediction
+perf <- performance(prediction.obj = votes_roc,
+                    measure = "tpr", # tpr = true positive rate
+                    x.measure = "fpr") #fpr = false positive rate
+                    
+# buat plot
+plot(perf)
+abline(0,1, lty = 2) # utk buat garis diagonal saja = kurva utk model yang buruk (utk jadi pembanding)
+```
+
+* Model yang buruk adalah yang menghasilkan garis diagonal pada plot -> model hanya baik memprediksi salah satu kelas.
+
+## Area Under ROC Curve (AUC)
+
+AUC menunjukkan luas area di bawah kurva ROC. **Semakin mendekati 1**, semakin bagus performa modelnya. Untuk mendapatkan nilai AUC, tulis `auc` pada parameter `measure` dari `performance()` dan ambil nilai `y.values`.
+
+```{r}
+auc <- performance(prediction.obj = votes_roc, 
+                   measure = "auc")
+auc@y.values
+```
+
+Nilai AUC dari model Naive Bayes mendekati 1, artinya model kita mampu mengklasifikasikan kelas positif dan kelas negatif dengan baik.
+
+**Important Notes**:
+
+ROC & AUC sebagai tools tambahan untuk menentukan kebaikan model mengklasifiksaikan kelas positif maupun kelas negatif:
+
+  * diinginkan kurva yang sudut tengahnya mendekati bagian kiri atas (TP tinggi; FP rendah)
+  * diinginkan AUC yang mendekati 1, tidak diinginkan AUC yang mendekati 0.5.
+  * note: bila AUC kurang dari 0.5, ada kemungkinan kita salah melabelkan kelas positifnya
+
+
+# Text Mining
+
+Text Mining adalah salah satu metode analisis data dan machine learning yang fokus utamanya adalah **mencari informasi dan pola-pola dari data teks**. Data text berupa data tak terstruktur:
+
+- 1 kalimat bisa terdiri dari beberapa kata, yang jumlahnya berbeda-beda tiap kalimat.
+- Adanya *typo* (salah ketik) dan penyingkatan kata (you menjadi u) sehingga perlu dibersihkan terlebih dahulu sebelum diproses.
+- Adanya perbedaan bahasa yang digunakan sehingga perlu mencari lexicon yang cocok.
+- Penggunaan simbol-simbol seperti #~!!$* yang mungkin tidak bermakna dan perlu dibersihkan
+
+**Data text perlu diubah dulu menjadi data terstruktur (terdiri dari baris/kolom)** agar dapat dianalisis oleh komputer. Secara umum, beberapa analisis yang bisa dihasilkan dari text mining serta workflow-nya secara general dapat digambarkan sebagai berikut:
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("img/text_mining.png")
+```
+
+## Study Case: SPAM Classifier
+
+**Business Question:** Ingin dilakukan klasifikasi untuk menentukan apakah suatu sms termasuk spam atau bukan (ham), berdasarkan kata-kata yang terdapat pada sms tersebut.
+
+* Positive Class: spam
+* Negative Class: bukan spam
+
+## Read Data
+
+```{r}
+sms <- read.csv("data_input/spam.csv", 
+                stringsAsFactors = FALSE, encoding = "UTF-8")
+# cek data
+tail(sms)
+```
+
+## Data Wrangling
+
+Adakah kolom yang tidak berguna? Adakah kolom yang tipe datanya perlu diperbaiki?
+
+```{r}
+# your code
+glimpse(sms)
+summary(sms)
+```
+
+```{r}
+sms <- sms %>% 
+  select(v1,v2) %>%               # hanya mengambil kolom v1 dan v2
+  mutate(v1 = as.factor(v1)) %>%  # mengubah kolom v1 menjadi factor
+  setNames(c("types","text"))     # memberikan nama kolom
+
+head(sms)  
+```
+
+```{r}
+colSums(is.na(sms))
+```
+
+
+
+## Exploratory Data Analysis (EDA)
+
+```{r}
+prop.table(table(sms$types))
+```
+
+**Note:** proporsi memang mendekati imbalance, namun kita coba dulu training model menggunakan proporsi aslinya. kalau ternyata modelnya buruk (hanya bisa memprediksi salah satu kelas), maka kita bisa coba upsample/downsample sebagai salah satu bentuk model tuning
+
+Ambil 5 sample teks yang termasuk spam, coba amati kata-kata apa saja yang sekiranya dapat menjadi indikator bahwa suatu teks adalah spam?
+
+```{r}
+# your code
+sms %>% 
+  filter(types == "spam") %>% 
+  head(5) %>% 
+  pull(text)
+
+# equivalent dengan
+
+head(sms$text,5)
+```
+
+Kata yang sering muncul untuk sms spam: "winner", "Free", "call", "claim"
+
+
+
+## Data Pre-processing
+
+Data text (raw) perlu dibersihkan terlebih dahulu (text cleansing) sebelum pembuatan model. Text dapat diubah menjadi format `corpus` kemudian kita bersihkan. **Corpus** adalah kumpulan dokumen. Pada contoh ini, 1 dokumen akan berisi 1 observasi sms. Di dalam satu sms bisa terdapat 1 atau lebih kalimat.
+
+### Text to Corpus
+
+Salah satu package yang bisa digunakan untuk text mining adalah `tm`. Kita akan ubah data teks menjadi corpus dengan function `VCorpus()`.
+
+```{r message=F}
+library(tm)
+
+# VCorpus requires a source object, which can be created using VectorSource
+sms.corpus <- VCorpus(VectorSource(sms$text)) # mengubah value di kolom text menjadi bentuk corpus
+sms.corpus
+```
+
+
+```{r}
+# cek data sms ke-9
+sms.corpus[[9]]$content
+```
+
+### Text Cleansing
+
+```{r}
+# Remove numbers
+sms.corpus <- tm_map(sms.corpus, removeNumbers)
+
+# To lowercase
+sms.corpus <- tm_map(sms.corpus, content_transformer(tolower)) 
+
+# Remove stopwords ("am", "and", "or", "if") -> kata sambung
+sms.corpus <- tm_map(sms.corpus, removeWords, stopwords("english")) # kita bisa provide kamus sendiri
+```
+
+```{r}
+sms.corpus[[9]]$content
+```
+
+Untuk menghilangkan/me-replace karakter tertentu, kita dapat membuat function manual.
+
+```{r}
+# function DIY
+transformer <- content_transformer(FUN = function(x, pattern){
+ gsub(x = x, # data text
+      pattern = pattern, # pattern yang ditemui
+      replacement = " ") # ganti pattern dengan spasi " "
+})
+```
+
+Untuk menghilangkan semua tanda baca (punctuation), gunakan `removePunctuation()`. Tanda baca yang dihilangkan: ! ' # S % & ' ( ) * + , - . / : ; < = > ? @ [ / ] ^ _ { | } ~
+
+```{r}
+# Replace ".", "/", "@", "-" with a white space
+sms.corpus<- tm_map(sms.corpus, transformer, "/")
+sms.corpus<- tm_map(sms.corpus, transformer, "@")
+sms.corpus<- tm_map(sms.corpus, transformer, "-")
+sms.corpus<- tm_map(sms.corpus, transformer, "\\.") # menghapus titik di akhir dan awal kata
+
+
+# Remove all punctuation
+sms.corpus <- tm_map(sms.corpus, removePunctuation) # manghapus tanda baca
+```
+
+"malu aku malu pada semut merah. yang berbaris didinding"
+
+```{r}
+sms.corpus[[9]]$content
+```
+
+Mengapa beberapa tanda baca direplace dengan whitespace dan tidak langsung dihilangkan? agar kata-kata dibawah tidak menjadi kata sambung:
+
+* `www.google.com` -> www google com
+* `joe@gmail.com` -> joe gmail com
+* `jalan-jalan` -> jalan jalan
+
+Kita juga bisa melakukan **stemming** atau memotong sebuah kata menjadi kata dasarnya, misalnya dari *walking* menjadi *walk*.
+
+```{r}
+# stemming
+sms.corpus <- tm_map(sms.corpus,stemDocument)
+```
+
+```{r}
+sms.corpus[[9]]$content
+```
+
+Terakhir, kita melakukan remove space yang berlebihan "___" karena proses tokenizing dan pembuatan document-term-matrix akan memotong kata perkata dengan separator spasi "_", 
+
+```{r}
+# remove whitespace berebihan
+sms.corpus <- tm_map(sms.corpus,stripWhitespace)
+```
+
+```{r}
+sms.corpus[[9]]$content
+```
+
+
+Text cleaning:
+- ubah kolom berisi data teks menjadi corpus menggunakan funcion `VCorpus()`
+- hapus angka
+- mengubah seluruh teks menjadi lowercase
+- remove stopwords (stopwords adalah kata yang dianggap tidak penting (umumnya kata bantu) dalam klasifikasi teks)
+- menghapus simbol sesuai pattern (contoh: "@", "-", "?", "." ,"/")
+- Stemming (menghapus imbuhan) 
+  opsional: lemmatization: menghapus imbuhan dan mengubah tenses kata menjadi kata dasar (contoh: eating -> eat, eats -> eat)
+- menghapus spasi berlebih (whitespace)
+
+
+Diskusi: urutan text cleaning apakah mutlak?
+
+1. remove number
+2. to lowercase
+3. remove stopwords
+
+Kalau seperti ini: bisa
+
+1. to lowercase
+2. remove number
+3. remove stopwords
+
+Kalau seperti ini: tidak bisa
+
+1. remove number 
+2. remove stopwords -> karena R case sensitif, kamus stopwords yang isinya lowercase tidak bisa mendeteksi stopwords di sms yang masih ada uppercasenya.
+3. to lowercase
+
+**Note:** Kita harus tau apa yang dilakukan tiap prosesnya dan menentukan tahapan pre-processing yang tepat berdasarkan data kita.
+
+
+### Document-Term Matrix (DTM)
+
+Setelah kita mendapatkan teks yang sudah bersih, pertanyaan berikutnya adalah bagaimana cara kita membuat model jika prediktor-nya masih berupa text? 
+
+Dalam text mining, biasanya teks diubah menjadi **Document-Term Matrix (DTM)** melalui proses yang bernama tokenization. **Tokenization** berfungsi memecah 1 kalimat menjadi beberapa `term`. `term` dapat berupa 1 kata, pasangan 2 kata, dan seterusnya. Dalam DTM, 1 kata akan menjadi 1 prediktor, dengan nilainya berupa frekuensi kemunculan kata tersebut pada dokumen (dalam hal ini 1 sms). 
+
+```{r }
+sms.dtm <- DocumentTermMatrix(sms.corpus)
+
+# cek data
+inspect(sms.dtm)
+```
+
+
+```{r}
+as.data.frame(head(as.matrix(sms.dtm)))
+```
+
+
+```{r}
+# cek data 
+sms[1085,"text"]
+```
+
+
+**summary**
+
+1. Naive Bayes dapat digunakan untuk kasus klasifikasi dari data text 
+2. Text Mining:
+
+* Business Question -> spam classifier -> spam(+) ham(-)
+* Read Data
+* Data Wrangling
+* Data Preprocessing:
+  - data$text -> corpus (kumpulan dokumen, 1 dokumen = 1 sms)
+  - corpus cleaning:
+    - remove number
+    - tolower
+    - remove stopwords (kata sambung)
+    - remove punctuation (tanda baca), ubah beberapa simbol menjadi spasi
+    - stemming: remove kata imbuhan
+    - remove whitespace berlebih
+* corpus -> dtm (setiap baris = sms, setiap kolom = kata-kata prediktor)
+
+
+--- end of day 2 ---
+
+
+Kita bisa lihat kata apa saja yang muncul dalam setidaknya 300 sms dari seluruh data kita. Kata-kata yang sering muncul ini bisa menjadi kandidat untuk prediktor yang baik.
+
+```{r}
+# ambil terms yang setidaknya muncul di 300 sms
+smsFreq <- findFreqTerms(x = sms.dtm, lowfreq = 300)
+smsFreq
+
+```
+
+## Cross-Validation
+
+Sebelum pembuatan model, split data menjadi `data_train` dan `data_test` dengan komposisi 75% sebagai data training.
+
+```{r }
+set.seed(100)
+
+index <- sample(nrow(sms.dtm), nrow(sms.dtm)*0.75)
+
+data_train <- sms.dtm[index, ]
+data_test <- sms.dtm[-index, ]
+```
+
+Kita siapkan data label target:
+
+```{r }
+label_train <- sms[index, "types"]
+label_test <- sms[-index, "types"]
+```
+
+Cek proporsi kelas target pada data train:
+
+```{r}
+prop.table(table(label_train))
+```
+
+## Further Data Pre-processing
+
+Mari cek dimensi data_train yang akan kita gunakan untuk pembuatan model:
+
+```{r}
+inspect(data_train)
+```
+
+Kolom atau kata yang kita punya untuk prediksi sangat banyak. Untuk mengurangi noise (kata-kata yang jarang muncul), kita akan gunakan kata-kata yang cukup sering muncul, setidaknya muncul dalam 20 dokumen (sms):
+
+```{r }
+sms_freq <- findFreqTerms(x = data_train, lowfreq = 20)
+length(sms_freq)
+
+# cek isi sms_freq
+head(sms_freq, 15)
+
+```
+
+Kita ambil hanya kata-kata yang muncul di `sms_freq`:
+
+```{r }
+data_train <- data_train[, sms_freq]
+
+```
+
+```{r}
+inspect(data_train)
+```
+
+Nilai pada matrix masih berupa nilai frekuensi. Untuk perhitungan peluang, frekuensi akan diubah menjadi hanya kondisi muncul (1) atau tidak (0). Salah satu caranya dengan menggunakan **Bernoulli Converter**.
+
+Kita dapat membuat fungsi DIY **Bernoulli Converter**: 
+
+* jika jumlah kata yang muncul >= 1 (muncul) = 1
+* jika jumlah kata yang muncul 0 ( tidak muncul) = 0
+
+```{r}
+# fungsi DIY
+bernoulli_conv <- function(x){
+  x <- as.factor(ifelse(x > 0, 1, 0))
+  return(x)
+}
+
+# coba fungsi
+bernoulli_conv(c(0,1,3,0,12,4,0.3))
+```
+
+Kita terapkan *Bernoulli Converter* ke dalam `data_test` dan `data_train`:
+
+```{r}
+data_train_bn <- apply(X = data_train, MARGIN = 2, FUN = bernoulli_conv)
+data_test_bn <- apply(X = data_test, MARGIN = 2, FUN = bernoulli_conv)
+```
+
+```{r,eval=FALSE}
+# equivalent dengan
+data_train %>% 
+  mutate_all(bernoulli_conv)
+  
+```
+
+
+Kita lihat hasilnya:
+
+```{r}
+# cek baris dan kolom tertentu
+data_train_bn[15:25, 35:40]
+```
+
+## Model Fitting
+
+Kita buat model Naive Bayes berdasarkan data yang sudah kita proses.
+
+```{r}
+# your code
+model_naive <- naiveBayes(x = data_train_bn, # data prediktor
+                          y = label_train, # data target
+                          laplace = 1)
+
+```
+
+```{r}
+as.data.frame(head(data_train_bn))
+```
+
+
+## Prediction
+
+Kita coba prediksi nilai target pada data test, simpan ke dalam objek `sms_predClass`
+
+```{r}
+# your code
+sms_predClass <- predict(object = model_naive, 
+                         newdata = data_test_bn,
+                         type = "class")
+
+head(sms_predClass)
+
+```
+
+## Model Evaluation
+
+Gunakan confusion matrix untuk mengevaluasi performa model Naive Bayes yang kita buat:
+
+```{r}
+# your code
+confusionMatrix(data = sms_predClass, # hasil prediksi
+                reference = label_test, # label aktual
+                positive = "spam")
+
+```
+
+Metrics yang diunggulkan? Beserta alasannya.
+recall: berusaha untuk menekan false negatif. sebisa mungkin email non-spam jangan salah terprediksi
+
+precision: memperbolehkan adanya false postif. mentolerir email spam untuk diklasifikasikan sebagai non-spam
+
+
+Kelas positif: spam
+
+
+**ROC & AUC**
+
+```{r}
+# siapkan hasil probability
+sms_predProb <- predict(object = model_naive, 
+                         newdata = data_test_bn,
+                         type = "raw")
+  
+# cek hasil probability
+head(sms_predProb)
+
+```
+
+```{r}
+# buat objek prediction
+sms_roc <- prediction(predictions = sms_predProb[,2],
+                      labels = label_test)
+# buat objek performance
+sms_perf <- performance(prediction.obj = sms_roc,
+                        measure = "tpr", # tpr = true positive rate
+                        x.measure = "fpr")
+
+# buat plot
+plot(sms_perf)
+abline(0,1, lty = 2)
+
+```
+
+```{r}
+# hitung AUC
+sms_auc <- performance(prediction.obj = sms_roc, 
+                       measure = "auc")
+sms_auc@y.values
+
+```
+
+# Decision Tree
+
+Decision Tree adalah model yang terbilang cukup sederhana, namun performanya *robust/powerfull* dan hasilnya *dapat diinterpretasi* dengan mudah. Model decision tree merupakan dasar dari *tree-based model* lainnya seperti Random Forest yang terkenal robust untuk menghasilkan prediksi.
+
+Decision tree akan menghasilkan **pohon keputusan** berdasarkan pola yang terdapat pada data. Hasilnya divisualisasikan dalam Flow Chart sehingga dapat dipahami dengan mudah bagaimana model tersebut melakukan prediksi.
+
+Karakter tambahan decision tree:
+
+* Mengasumsikan antar variabel prediktor saling dependen
+* Decision tree dapat mengatasi multicollinearity
+* Decision tree dapat mengatasi outlier
+
+## Struktur
+
+Untuk lebih memahami decision tree, mari kita lihat struktur sederhana dari decision tree dan istilah-istilah yang sering dipakai. Di bawah ini adalah decision tree untuk menentukan apakah kita akan *beraktifitas keluar atau tidak* weekend ini:
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("img/strucutre.PNG")
+```
+
+* **Root Node**: Cabang pertama, berupa variabel yang paling utama digunakan untuk menentukan nilai target
+* **Interior Node**: Cabang kedua dan seterusnya, berupa variabel lain yang digunakan apabila cabang pertama tidak cukup untuk menentukan target
+* **Leaf/Terminal Node**: Nilai target atau kelas yang diprediksi
+
+Decision tree menentukan rules dengan memilih variable prediktor yang paling mampu menghomogenkan data target (contoh, observasi yang 100% `Yes` ketika cuaca berawan (overcast)).
+
+Sesi dibawah akan membahas lebih detail mengenai apa yang dimaksud *data homogen* dan pembuatan decision tree tersebut menggunakan **Entropy** & **Information Gain**.
+
+
+## Entropy & Information Gain {.tabset}
+
+### Pahami Intuisinya
+
+**Study Case: Dine Out**
+
+Berikut adalah catatan kegiatan makan malam saya di restoran selama saya bekerja. Bagaimana Decision Tree mencoba menemukan pola pada data saya, dan membuat prediksi tentang *"apakah saya akan makan malam di restoran malam ini"*?
+
+```{r}
+dine <- read.csv("data_input/dineout.csv",sep = ";", stringsAsFactors = T)
+dine
+```
+
+* **Budget**: Budget yang saya miliki (High/Low)
+* **Distance**: Jarak restoran dengan rumah saya (Far, Near)
+* **Friend**: Apakah saya makan bersama teman (Available, Absent)
+* **Dine.Out**: Status makan di restoran (Yes/No)
+
+Yang ingin dicapai oleh decision tree adalah memisahkan data menjadi kelompok-kelompok kecil berdasarkan kondisi tertentu, sehingga dalam kelompok tersebut dihasilkan **data yang homogen**/memiliki homogenitas tinggi. Data yang homogen sebisa mungkin hanya memiliki salah satu kelas dari variable target. Ukuran homogenitas data ini dapat diwakilkan dengan nilai **entropy**.
+
+**Entropy** adalah ukuran ketidakteraturan (measure of disorder) yang dapat digunakan untuk mewakili seberapa beragam kelas yang ada dalam suatu kumpulan data.
+
+```{r echo=FALSE, out.width="80%"}
+knitr::include_graphics("img/entropy.PNG")
+```
+
+* `Entropy = 1`, tidak ada kelas yang dominan (jumlah kedua kelas seimbang)
+* `Entropy = 0`, salah satu kelas sangat dominan
+
+> Diinginkan kumpulan data setelah percabangan/pemisahan yang memiliki entropy rendah.
+
+Dalam memilih siapa yang akan menjadi prediktor pertama (root node), dihitung **perubahan entropy** antara entropy awal dan setelah dilakukan percabangan/pemisahan data menggunakan variabel prediktor. Diambil prediktor yang menghasilkan **penurunan entropy paling besar**, yang berarti membuat data setelah pemisahan semakin homogen. Perubahan entropy tersebut disebut **information gain**.
+
+> Diinginkan prediktor yang menghasilkan information gain yang paling besar.
+
+Oleh karena itu pembuatan decision tree untuk data `dine` di atas adalah:
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("img/dineout.PNG")
+```
+
+Sehingga dihasilkan decision tree:
+
+```{r echo = FALSE}
+library(partykit)
+
+dtree_model <- ctree(formula = Dine.Out ~., data =  dine, control = ctree_control(mincriterion=0.005, minsplit=0, minbucket=0))
+
+plot(dtree_model, type = "simple")
+```
+
+**NOTE**: Decision tree di atas adalah illustrasi sederhana dari data dummy yang jumlahnya masih sedikit dan kemungkinan terlalu sempurna.
+
+### Perhitungan Matematika
+
+Rumus Entropy:
+
+$$Entropy = \Sigma_{i=1}^c -p_i \ log_2 \ p_i$$
+
+Bila dipecah (entropy untuk target dengan dua kelas) menjadi:
+
+$$Entropy = -\ p_1 \ log_2 \ p_1 -p_2 \ log_2 \ p_2$$
+
+* $p_1$: proporsi kelas ke-*1*, misalkan `Dine.Out = Yes`
+* $p_2$: proporsi kelas ke-*2*, misalkan `Dine.Out = No`
+
+Untuk pembuatan pohon, pertama-tama dihitung entropy dari variable target sebelum splitting. 
+
+Nilai Entropy dari variabel target `Dine.Out`:
+
+```{r}
+table(dine$Dine.Out)
+```
+
+```{r}
+entropy_awal <- - 8/12*log2(8/12) - 4/12*log2(4/12)
+entropy_awal
+```
+
+Kemudian ditentukan variable prediktor yang mampu memberikan penurunan entropy paling besar atau menghasilkan **information gain** yang paling besar. Untuk itu, kita akan menghitung entropy setelah splitting untuk masing-masing prediktor, kemudian dihitung selisihnya dengan entropy awal (variable target).
+
+$$Information \ Gain = Entropy(parent) - (P_1 \  Entropy_1 + P_2 \  Entropy_2)$$
+
+* $P_1$: proporsi subset data kelas ke-*1*, misalkan `Budget = High`
+* $P_2$: proporsi subset data kelas ke-*2*, misalkan `Budget = Low`
+* $Entropy_1$: entropy untuk subset data kelas ke-*1*, misalkan `Budget = High`
+* $Entropy_2$: entropy untuk subset data kelas ke-*2*, misalkan `Budget = Low`
+
+**TL;DR** : kita gunakan $P_1 \ Entropy_1$ untuk menghitung weighted entropy dari `Budget = High` dan $P_2 \ Entropy_2$ untuk weighted entropy dari `Budget = Low`.
+
+
+1. Contoh penghitungan information gain untuk variable `Budget`:
+
+```{r}
+table(budget = dine$Budget, dine = dine$Dine.Out)
+```
+
+```{r}
+entropy_budget <- 6/12*(-2/6*log2(2/6) - 4/6*log2(4/6)) + # entropy Budget = High 
+                  6/12*(-6/6*log2(6/6)) # entropy Budget = Low
+entropy_budget
+```
+
+```{r}
+ig_budget <- entropy_awal - entropy_budget
+ig_budget
+```
+
+2. Contoh penghitungan information gain untuk variable `Distance`:
+
+```{r}
+table(distance = dine$Distance, dine = dine$Dine.Out)
+```
+
+```{r}
+entropy_distance <- 6/12*(-5/6*log2(5/6) - 1/6*log2(1/6)) + # entropy Distance = Far 
+                  6/12*(-3/6*log2(3/6) - 3/6*log2(3/6)) # entropy Distance = Near
+entropy_distance
+```
+
+```{r}
+ig_distance <- entropy_awal - entropy_distance
+ig_distance
+```
+
+3. Contoh penghitungan information gain untuk variable `Friend`:
+
+```{r}
+table(friend = dine$Friend, dine = dine$Dine.Out)
+```
+
+```{r}
+entropy_friend <- 7/12*(-5/7*log2(5/7) - 2/7*log2(2/7)) + # entropy Friend = Absent 
+                  5/12*(-3/5*log2(3/5) - 2/5*log2(2/5)) # entropy Friend = Available
+entropy_friend
+```
+
+```{r}
+ig_friend <- entropy_awal - entropy_friend
+ig_friend
+```
+
+Karena information gain dari prediktor Budget paling tinggi, maka prediktor tersebut dijadiikan root node. Untuk menghasilkan internal node selanjutnya, dilakukan perhitungan information gain yang serupa.
+
+
+## Study Case: Diabetes
+
+**Business Question:** Sebagai seorang konsultan kesehatan di sebuah rumah sakit, kita diminta untuk membuat rules dari hasil tes diagnosis dan riwayat penyakit diabetes dari 768 pasien. Dalam kasus ini, kita akan mengaplikasikan decision tree agar rules dapat disajikan dalam bentuk visualisasi yang mudah diinterpretasi.
+
+- kelas positif: diabetes (pos)
+- kelas negatif: sehat (neg)
+
+### Read Data
+
+```{r}
+# read data
+diab <- read.csv("data_input/diabetes.csv")
+
+# cek data
+head(diab)
+str(diab)
+```
+
+Deskripsi data:
+
+- `pregnant`: Number of times pregnant
+- `glucose`: Plasma glucose concentration (glucose tolerance test)
+- `pressure`: Diastolic blood pressure (mm Hg)
+- `triceps`: Triceps skin fold thickness (mm)
+- `insulin`: 2-Hour serum insulin (mu U/ml)
+- `mass`: Body mass index (weight in kg/(height in m)^2)
+- `pedigree`: Diabetes pedigree function
+- `age`: Age (years)
+- `diabetes`: Test for Diabetes
+
+### Data Wrangling
+
+Sesuaikan tipe data pada dataset `diab`:
+
+```{r}
+# your code
+diab <- diab %>% 
+        mutate(diabetes = as.factor(diabetes))
+str(diab)
+```
+
+### Cross-Validation
+
+Split data `diab` menjadi `diab_train` dan `diab_test` dengan proporsi 80:20
+
+```{r}
+RNGkind(sample.kind = "Rounding")
+set.seed(100)
+
+index <- sample(nrow(diab), nrow(diab) * 0.8)
+
+diab_train <- diab[index,]
+diab_test <- diab[-index,]
+```
+
+Cek proporsi kelas di data training:
+
+```{r}
+prop.table(table(diab_train$diabetes))
+```
+
+Apabila diperhatikan, proporsi `diab_train` sebenarnya masih bisa dianggap balance. Namun kita bisa coba membuatnya lebih balance lagi sehingga proporsinya 50:50, kita kenal dengan istilah:
+
+- **Upsampling**: menambahkan observasi kelas minoritas hingga seimbang dengan kelas mayoritas, dengan cara menduplikasi data. Kekurangan: hanya data duplikat, tidak menambah informasi baru.
+- **Downsampling**: mengurangi observasi kelas mayoritas hingga seimbang dengan kelas minoritas. Kekurangan: membuang informasi dari data yang dimiliki. Biasanya digunakan apabila data pada kelas minoritas cukup banyak.
+
+referensi balancing data: SMOTE
+
+*Tips:* Apabila data terlalu sedikit dan tidak ingin melakukan upsampling, silahkan collect more data untuk kelas minoritasnya.
+
+```{r}
+# downsampling
+set.seed(100)
+
+diab_train <- downSample(x =  %>%  select(-diabetes),
+                         y = diab_train$diabetes,
+                         yname = "diabetes")
+head(diab_train)
+```
+
+```{r}
+table(diab_train$diabetes) %>% prop.table()
+```
+
+
+## Model Fitting
+
+```{r}
+library(partykit)
+diabetes_tree <- ctree(formula = diabetes ~ .,data = diab_train)
+```
+
+```{r}
+# print struktur pohon
+diabetes_tree
+```
+
+
+
+```{r fig.width=10}
+# visualisasi decision tree
+plot(diabetes_tree, type = "simple")
+```
+
+
+```{r}
+diab_train %>% 
+  filter(glucose <= 127, pregnant <= 4,mass <= 27.8) %>% 
+  pull(diabetes) %>% table() %>% prop.table()
+```
+
+```{r}
+diab_train %>% 
+  filter(glucose > 127, mass <= 29.9) %>% 
+  pull(diabetes) %>% table() %>% prop.table()
+```
+
+
+
+## Model Evaluation
+
+Mari evaluasi `diabetes_tree` menggunakan confusion matrix berdasarkan hasil prediksi di data test:
+
+Parameter `type`:
+
+- `type = "prob"` mengembalikan nilai peluang untuk masing-masing kelas
+- `type = "response"` mengembalikan label kelasnya (default threshold 0.5) 
+
+```{r}
+# prediksi kelas di data test
+pred_diab_test <- predict(object = diabetes_tree,newdata = diab_test, type = "response")
+
+# confusion matrix data test
+confusionMatrix(pred_diab_test,reference = diab_test$diabetes,
+                positive = "pos")
+```
+
+
+Metric apa yang kita perhatikan pada kasus ini? Dengan ketentuan, apabila pasien dideteksi sebagai positif diabetes maka diarahkan untuk test dan konsultasi lanjutan.
+
+> Recall
+
+Selain melihat confusion matrix untuk data test saja, ada baiknya kita juga bandingkan dengan performance model di data train (`diab_train`) untuk mengetahui fitting dari sebuah model:
+
+```{r}
+# prediksi kelas di data train
+pred_diab_train <- predict(object = diabetes_tree,newdata = diab_train, type = "response")
+
+# confusion matrix data train
+confusionMatrix(pred_diab_train,reference = diab_train$diabetes,
+                positive = "pos")
+
+```
+
+recall data test: 0.62
+recall data train: 0.76
+
+
+
+
+## Bias-Variance Tradeoff
+
+Dikenal 2 karakteristik model machine learning:
+
+- **Bias**: perbedaan antara hasil prediksi dengan aktualnya (error)
+- **Variance**: variasi hasil prediksi pada observasi tertentu
+
+> Semakin sederhana suatu model, maka semakin tinggi bias dan semakin rendah variancenya. Begitupun sebaliknya.
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("img/bias-variance.png")
+```
+
+Harapan kita adalah mendapatkan model yang bias dan variancenya saling berimbang, atau model yang "Just Right".
+
+## Pruning and Tree Size
+
+Kekurangan dari Decision Tree adalah rentan overfitting, karena mampu melakukan splitting data hingga amat detail, bahkan sampai kondisi dimana 1 leaf node hanya terdapat 1 observasi. Hal ini membuat model Decision Tree hanya *menghafal* pola data train dengan membuat rules yang kompleks, yang seharusnya *mempelajari* pola data tersebut. Hasilnya model kurang bisa mengeneralisir pola data test, sehingga performanya jauh lebih buruk.
+
+Mengatasi hal tersebut, Decision Tree perlu tahu kapan berhenti membuat percabangan sehingga pohon lebih sederhana. Pemotongan cabang pohon inilah yang disebut sebagai **Pruning**. Secara umum, terbagi atas 2 cara:
+
+- **Pre-Pruning**: Terlebih dahulu memasang parameter sebelum model dihasilkan. Metode ini kurang disarankan karena kita belum memiliki informasi tentang parameter apa yang sebaiknya kita atur (harus menduga).
+
+- **Post-Pruning**: Pruning setelah kita mendapatkan model yang lengkap atau kompleks, lalu menentukan seberapa jauh kita akan memangkas cabang pada Decision Tree.
+
+Parameter pruning pada function `ctree()`:
+
+- **mincriterion**: Nilai 1-$\alpha$. Saat mincriterion 0.95, P-value harus < 0.05 untuk suatu node dapat membuat cabang. (default: 0.95)
+- **minsplit**: Jumlah minimal observasi di tiap cabang (interior atau internal node) setelah splitting. Bila tidak terpenuhi, tidak dilakukan percabangan. (default: 20)
+- **minbucket**: Jumlah minimal observasi di terminal node. Bila tidak terpenuhi, tidak dilakukan percabangan. (default: 7)
+
+Contoh model yang terlalu kompleks:
+
+```{r echo = FALSE, fig.width = 20}
+diabetes_tree_complex <- ctree(diabetes ~ ., diab_train,
+                               control = ctree_control(mincriterion = 0.005, # p-value 0.995 lolos
+                                            minsplit = 0,
+                                            minbucket = 0))
+
+plot(diabetes_tree_complex,type = "simple")
+```
+
+Mari kita lakukan tuning terhadap `diabetes_tree` agar tidak terlalu kompleks (lebih sederhana) dengan mengubah parameter berikut:
+
+- `mincriterion`: nilainya diperbesar
+- `minsplit`: nilainya diperbesar
+- `minbucket`: nilainya diperbesar
+
+```{r fig.width=10}
+diabetes_tree_tuned <- ctree(diabetes ~ ., diab_train,
+                               control = ctree_control(mincriterion = 0.5,
+                                            minsplit = 40,
+                                            minbucket = 12))
+plot(diabetes_tree_tuned, type = "simple")
+```
+
+Kemudian kita coba re-evaluasi untuk model yang sudah dilakukan tuning, simpan pada objek `pred_diab_train_tuned` dan `pred_diab_test_tuned`:
+
+```{r}
+# prediksi kelas di data test
+pred_diab_test_tuned <- predict(diabetes_tree_tuned, newdata = diab_test, type = "response")
+
+# confusion matrix data test
+confusionMatrix(pred_diab_test_tuned, diab_test$diabetes, positive = "pos")
+```
+
+```{r}
+# prediksi kelas di data train
+pred_diab_train_tuned <- predict(diabetes_tree_tuned, newdata = diab_train, type = "response")
+# confusion matrix data train
+confusionMatrix(pred_diab_train_tuned, diab_train$diabetes, positive = "pos")
+```
+
+- Recall di train: 0.76
+- Recall di test: 0.62
+
+> masih overfit
+
+Apabila model Decision Tree masih overfitting, salah satu cara yang dapat kita lakukan untuk meningkatkan performanya adalah menggunakan *Ensemble Method*.
+
+**summary**
+TExt mining:
+1. Document Term Matrix => mengubah data teks yang sudah di cleansing kedalam bentuk matrix agar bisa dimodelkan. Saat DTM, dilakukan proses tokenizing
+  Tokenizing : memecah dokumen menjadi kata per kata. tiap kata disimpan menjadi kolom
+
+
+Decision Tree:
+1. Decision Tree (DT) bagian paling dasar dari Tree based model. pemecahan keputusan di decision tree didapat dari perhitungan entropy dan information gain
+2. Ciri DT:
+  - mengasumsikan antar prediktor antar prediktor
+  - cenderung overfit
+  - termasuk model yang bisa diinterpretasikan
+  - DT bisa dituning (pruning) dengan cara mengubah parameter: `mincriterion` , `minsplit`, `minbucket`
+  
+3. bias-variance tradeoff:
+  - overfit: selisih evaluasi di data train jauh berbeda dengan evaluasi di data test
+  - underfit : baik evaluasi di data train dan test sama-sama rendah
+  
+
+
+--- end of day 3 ---
+
+
+### **DIVE DEEPER**
+
+Business Case: Kita adalah seorang data anlyst di department sales. Department sales bagian telemarketing mengumpulkan 400 sampel data customer dengan status membeli produk atau tidak. Tugas kita adalah membuat model decision tree untuk memprediksi apakah customer yang diketahui `gender`,`age`,dan `salary` akan membeli produk kita.
+
+```{r}
+customer <- read.csv("data_input/Customer_Behaviour.csv")
+glimpse(customer)
+```
+
+
+Wrangling data
+```{r}
+# your code here
+
+```
+
+
+Cross validation
+split data train dan test dengan proporsi 80:20 menggunakan stratified random sampling
+```{r}
+set.seed(123)
+
+splitter <- 
+
+cust_train <- training(splitter)
+cust_test <- testing(splitter)
+```
+
+
+cek proporsi kelas train
+```{r}
+# your code here
+
+```
+
+Buat 2 model: model 1 menggunakan downsampling, model 2 tidak menggunakan balancing data
+
+
+Buat data train downsampling
+```{r}
+# your code here
+
+
+```
+
+
+Model 1: model tanpa downsampling
+```{r}
+# your code here
+
+```
+
+
+model 2: model dengan downsampling
+```{r}
+# your code here
+
+```
+
+
+Bandingkan ke-2 metrics model tersebut
+
+
+# Ensemble Method
+
+## Wisdom of the Crowd
+
+Salah satu cara untuk menekan bias dan variance sekaligus adalah dengan **menggabungkan prediksi dari beberapa model menjadi 1 prediksi tunggal**. Gabungan beberapa model ini disebut dengan **Ensemble Method**. Ensemble method yang merupakan pengembangan dari decision tree adalah **Random Forest**.
+
+# Random Forest
+
+## Memahami Random Forest
+
+Random Forest melakukan prediksi dengan membuat **banyak decision tree**. Masing-masing decision tree memiliki karakteristik dan tidak saling berhubungan. Masing-masing decision tree melakukan prediksi kemudian dari hasil prediksi tersebut dilakukan majority voting. Kelas dengan jumlah terbanyak akan menjadi hasil prediksi final. Random Forest memanfaatkan konsep bernama **Bagging: Bootstrap and Aggregation**. 
+
+Berikut adalah proses detail yang terjadi:
+
+1. Membuat data dengan random sampling dari data yang ada dan mengizinkan adanya duplikat (**Bootstrap sampling**)
+2. Membuat decision tree dari masing-masing data hasil bootstrap sampling, digunakan prediktor sebanyak `mtry` yang juga dipilih secara random
+3. Melakukan prediksi data baru untuk setiap decision tree
+4. Melakukan majority voting untuk menentukan hasil prediksi final (**Aggregation**)
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("img/random_forest.PNG")
+```
+
+Kelebihan Random Forest:
+
+* Mereduksi bias dari model
+* Robust untuk prediksi
+* Automatic Feature Selection: pemilihan prediktor secara otomatis & random pada pembuatan decision tree
+* Out-of-Bag error untuk pengganti evaluasi model ke data test 
+
+## Study Case: Fitbit
+
+**Business Question:** Kita adalah seorang analis dari perusahaan teknologi yang mengeluarkan product wearable fitness gadgets. Gadget tersebut dapat memprediksi secara otomatis untuk memberikan warning apabila suatu gerakan belum dilakukan secara optimal.
+
+Buatlah sebuah model random forest yang dapat mengklasifikasi kelima label gerakan (`classe`) sebagai berikut:
+
+- Class A: Exactly according to specification
+- Class B: Throwing elbows to the front
+- Class C: Lifting the dumbbell only halfway
+- Class D: Lowering the dumbbell only halfway
+- Class E: Throwing the hips to the front
+
+### Read Data
+
+```{r}
+fb <- read.csv("data_input/fitbit.csv", stringsAsFactors = F)
+dim(fb)
+```
+
+
+### Data Wrangling
+
+Menyesuaikan tipe data menjadi factor:
+
+```{r}
+fb <- fb %>% 
+  mutate(classe = as.factor(classe),
+         user_name = as.factor(user_name),
+         new_window = as.factor(new_window))
+```
+
+### Data Preprocessing
+
+Kekurangan dari Random Forest adalah membutuhkan waktu komputasi yang cukup lama. Hal ini dapat diatasi dengan membuang predictor yang variansinya mendekati nol (dianggap kurang informatif). Kita dapat mengeceknya dengan function `nearZeroVar()` dari package `caret`:
+
+```{r}
+library(caret)
+n0_var <- nearZeroVar(fb)
+fb <- fb[, -n0_var]
+dim(fb)
+
+# colnames(fb)[n0_var]
+```
+
+```{r}
+n0_var
+```
+
+
+```{r}
+fb <- fb %>% 
+  select(-user_name)
+```
+
+
+Ternyata ada 101 kolom yang dianggap sebagai nearZeroVar, sehingga data kita yang semulanya 158 kolom hanya tersisa 57 kolom.
+
+### Cross Validation
+
+Splitting training dan testing dataset dengan proporsi 80:20.
+
+```{r}
+set.seed(100)
+
+fb_intrain <- sample(nrow(fb), nrow(fb)*0.8)
+fb_train <- fb[fb_intrain, ]
+fb_test <- fb[-fb_intrain, ]
+```
+
+```{r}
+# cek proporsi kelas target data train
+prop.table(table(fb_train$classe))
+```
+
+### Model Fitting
+
+Membuat model Random Forest menggunakan `fb_train` dengan 5-fold cross validation, kemudian proses tersebut diulang sebanyak 3 kali.
+
+```{r eval=FALSE}
+# JANGAN DI RUN!
+
+# set.seed(417)
+# 
+# ctrl <- trainControl(method = "repeatedcv",
+#                      number = 5, # k-fold
+#                      repeats = 3) # repetisi
+# 
+# fb_forest <- train(classe ~ .,
+#                    data = fb_train,
+#                    method = "rf", # random forest
+#                    trControl = ctrl)
+# 
+# saveRDS(fb_forest, "fb_forest_update.RDS") # simpan model
+```
+
+
+### K-Fold Cross Validation
+
+Biasanya kita melakukan cross validation dengan membagi data hanya menjadi training dan testing data. **K-Fold Cross Validation** membagi data sebanyak $k$ bagian sama banyak, dimana setiap bagiannya digunakan menjadi testing data secara bergantian.
+
+```{r echo=FALSE, out.width="40%"}
+knitr::include_graphics("img/cross_validation.png")
+```
+
+Salah satu kelemahan Random Forest adalah pembuatan model yang membutuhkan waktu yang cukup lama. Practice yang baik saat selesai melakukan training adalah menyimpan model tersebut ke dalam bentuk file RDS dengan function `saveRDS()` agar model dapat langsung digunakan tanpa harus training dari awal.
+
+```{r}
+# read model
+fb_forest <- readRDS("data_input/fb_forest_update.RDS")
+fb_forest
+```
+
+
+Model yang dipilih adalah `mtry = 28` dengan nilai Accuracy tertinggi ketika diujikan ke data hasil bootstrap sampling (atau data in-sample, bisa dianggap sebagai data train seperti pada pembuatan model).
+
+### Out-of-Bag (OOB) Error
+
+Pada tahap Bootstrap sampling, terdapat data yang tidak digunakan dalam pembuatan model, ini yang disebut sebagai data **Out-of-Bag (OOB)**. Model Random Forest akan menggunakan data OOB sebagai data test untuk melakukan evaluasi dengan cara menghitung error. Error inilah yang disebut sebagai **OOB Error**. Dalam kasus klasifikasi, OOB error merupakan persentase data OOB yang misklasifikasi.
+
+```{r}
+library(randomForest)
+fb_forest$finalModel
+```
+
+```{r}
+100 - 0.08
+```
+
+Nilai OOB Error pada model `fb_forest` sebesar 0.08%. Dengan kata lain, akurasi model pada data OOB adalah 99.92%!
+
+**Note:** In practice, ketika membuat model Random Forest, kita tidak diwajibkan untuk splitting training-testing dataset di awal. Hal ini karena OOB sudah dapat mengestimasi performa model di unseen data.
+
+
+```{r}
+fb_test_pred_class <- predict(fb_forest, fb_test, type = "raw")
+cm_fb <- confusionMatrix(data = fb_test_pred_class,
+                         reference = fb_test$classe)
+cm_fb
+```
+
+### Interpretation
+
+Pada machine learning model, terdapat trade-off antara sisi interpretability dan performance. Performance Random Forest dapat diunggulkan dibandingkan model yang lain, namun tidak terlalu dapat diinterpretasi karena banyak faktor random yang terlibat. Namun setidaknya kita dapat melihat predictor apa saja yang paling penting dalam pembuatan Random Forest melalui **variable importance**nya:
+
+```{r fig.width = 10}
+varImp(fb_forest)
+plot(varImp(fb_forest))
+```
+
+
+
+# References
+
+- [Frequently Asked Questions (FAQ) Classification 2](https://askalgo.netlify.app/#classification-2)
+- [INTERPRETING CLASSIFICATION MODEL WITH LIME](https://algotech.netlify.app/blog/interpreting-classification-model-with-lime/)
+
+## Text Cleansing
+
+### By Algoritma
+
+- [TEXT PREPROCESSING USING TEXTCLEAN](https://algotech.netlify.app/blog/textclean/)
+- [TEXT CLEANING BAHASA INDONESIA-BASED TWITTER DATA](https://algotech.netlify.app/blog/text-cleaning-bahasa/)
+
+### Others
+
+- [Dokumentasi `tm` package](https://cran.r-project.org/web/packages/tm/vignettes/tm.pdf)
+- [Stopwords List Bahasa Indonesia](https://github.com/stopwords-iso/stopwords-id)
+- [Stemming Bahasa Indonesia](https://github.com/nurandi/katadasaR)
+- [Lemmatization: fungsi lain untuk pengubahan kata ke kata dasar](https://rdrr.io/cran/textstem/man/lemmatize_words.html)
+- [Buku penggunaan `tidytext` package](https://www.tidytextmining.com/)
+- [How VarImp works](https://topepo.github.io/caret/variable-importance.html)
+
+## Use case
+- [Text classification using NB and RF](https://rpubs.com/jojoecp/612656)
+- [Random Forest tuning model using grid search](https://rpubs.com/jojoecp/People_Analytics)
+
+
+

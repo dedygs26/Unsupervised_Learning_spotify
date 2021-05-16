@@ -1,0 +1,1 @@
+"0","model_dt <- ctree(quality~.,red_wine)"

@@ -1,0 +1,4 @@
+"0","data_clean <- popular_song %>% "
+"0"," select(c(acousticness,danceability,energy,instrumentalness,liveness,loudness,speechiness,valence))"
+"0",""
+"0","head(data_clean)"

@@ -1,0 +1,3 @@
+"0","red_wine <- red_wine %>% "
+"0","  mutate(quality=as.factor(ifelse(quality>6,""Excellent"",""Poor-Normal"")))"
+"0","red_wine"
